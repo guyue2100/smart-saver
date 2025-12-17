@@ -291,43 +291,6 @@ export default function App() {
         }
     });
   };
-  
-  const handleShare = async () => {
-    const shareData = {
-      title: state.appName,
-      text: '我正在使用彦仔宝库存零花钱，快来看看！',
-      url: window.location.href
-    };
-
-    try {
-      // Check for Web Share API support
-      // Use type assertion and explicit any to avoid TS errors
-      const nav = navigator as any;
-      if (nav.share) {
-         if (nav.canShare && !nav.canShare(shareData)) {
-            throw new Error('Data not shareable');
-         }
-         await nav.share(shareData);
-      } else {
-        throw new Error('Web Share API not supported');
-      }
-    } catch (err: any) {
-      // Ignore user cancellation (AbortError)
-      if (err.name === 'AbortError') return;
-      
-      console.warn('Share API failed, falling back to clipboard:', err);
-      
-      // Fallback to clipboard
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        alert('链接已复制到剪贴板！');
-      } catch (clipErr) {
-        console.error('Clipboard copy failed:', clipErr);
-        // Last resort
-        alert('分享失败，请复制浏览器地址栏链接');
-      }
-    }
-  };
 
   const triggerConfetti = () => {
     confetti({
@@ -784,50 +747,12 @@ export default function App() {
                 <h1 className="text-2xl font-black flex items-center tracking-tight drop-shadow-md">
                 {state.appName}
                 </h1>
-                {/* Unlocked Badges in Header */}
-                <div className="flex items-center -space-x-1.5 ml-2 overflow-visible">
-                    <AnimatePresence>
-                    {state.badges.map((badgeId, index) => {
-                        const badge = AVAILABLE_BADGES.find(b => b.id === badgeId);
-                        if (!badge) return null;
-                        return (
-                            <motion.div
-                                key={badgeId}
-                                initial={{ scale: 0, opacity: 0, rotate: -180 }}
-                                animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                                transition={{ type: "spring", stiffness: 260, damping: 20, delay: index * 0.1 }}
-                                className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border-2 border-yellow-300 flex items-center justify-center text-sm shadow-sm z-10 hover:z-20 hover:scale-125 transition-transform cursor-help"
-                                title={badge.name}
-                            >
-                                {badge.icon}
-                            </motion.div>
-                        );
-                    })}
-                    </AnimatePresence>
-                </div>
-            </div>
-            {/* New Date Location */}
-            <div className="mt-2 flex items-center gap-2 text-yellow-50/90 text-xs font-medium pl-1">
-                <div className="flex items-center gap-1.5 bg-black/10 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/10">
-                    <CalendarDays size={12} className="text-yellow-200" />
-                    <span>{today.getFullYear()}年{today.getMonth() + 1}月{today.getDate()}日</span>
-                    <span className="w-1 h-1 bg-yellow-200/50 rounded-full"></span>
-                    <span>{today.toLocaleDateString('zh-CN', { weekday: 'long' })}</span>
-                </div>
+                {/* REMOVED: Badge row next to name */}
             </div>
           </div>
           
           <div className="flex gap-2">
-            {/* Share Button (New) */}
-            <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleShare}
-                className="bg-blue-500 text-white p-2 rounded-lg relative border border-blue-400 shadow-md"
-                title="分享应用"
-            >
-                <Share size={18} />
-            </motion.button>
+            {/* REMOVED Share Button */}
 
             {/* Android Install Button */}
             {installPrompt && (
@@ -881,7 +806,7 @@ export default function App() {
 
       <main className="max-w-md mx-auto px-4 -mt-10 space-y-6 relative z-10">
         
-        {/* Main Balance Card */}
+        {/* Main Balance Card - OPTIMIZED LAYOUT */}
         <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={
@@ -889,7 +814,7 @@ export default function App() {
                 ? { opacity: 1, y: 0, scale: 1.02, borderColor: "rgba(253, 224, 71, 0.8)", boxShadow: "0 25px 50px -12px rgba(234, 179, 8, 0.5)" } 
                 : { opacity: 1, y: 0, scale: 1, borderColor: "rgba(254, 215, 170, 0.5)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }
             }
-            className="bg-treasure-flow rounded-2xl p-6 shadow-2xl border-2 text-white relative overflow-hidden transition-colors"
+            className="bg-treasure-flow rounded-3xl p-6 shadow-2xl border border-white/20 text-white relative overflow-hidden transition-colors"
         >
           {/* Shimmer effect */}
           <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 skew-x-12 translate-x-[-200%] animate-[shimmer_3s_infinite]"></div>
@@ -902,48 +827,62 @@ export default function App() {
             className="absolute inset-0 bg-gradient-to-r from-yellow-300/0 via-yellow-200/50 to-yellow-300/0 z-30 pointer-events-none"
           />
 
-          <div className="flex justify-between items-start mb-6 relative z-10 pt-1">
-            <div className="flex items-center gap-2">
-                <span className="text-white/90 text-sm font-semibold tracking-wide">总资产</span>
-                <button onClick={() => requestSecurity(() => { setInitBalanceInput(state.totalAssets.toString()); setShowInitBalanceModal(true); })} className="text-white/50 hover:text-white transition-colors"><Edit size={12} /></button>
+          {/* Clean Layout: Top Row */}
+          <div className="flex justify-between items-start relative z-10 mb-6">
+            <div className="flex flex-col">
+                 {/* Date - Subtle */}
+                <div className="flex items-center gap-1.5 text-yellow-100/90 text-xs font-medium mb-1 opacity-90">
+                    <CalendarDays size={12} className="opacity-80" />
+                    <span>{today.getFullYear()}/{today.getMonth() + 1}/{today.getDate()} {today.toLocaleDateString('zh-CN', { weekday: 'short' })}</span>
+                </div>
+                {/* Title */}
+                <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold tracking-tight text-white/95">总资产</span>
+                    <button onClick={() => requestSecurity(() => { setInitBalanceInput(state.totalAssets.toString()); setShowInitBalanceModal(true); })} className="text-white/40 hover:text-white transition-colors"><Edit size={14} /></button>
+                </div>
             </div>
             
-            <div className="flex flex-col items-end gap-2">
+            {/* Action Buttons - Compact stack on right */}
+            <div className="flex flex-col items-end gap-1.5">
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 onClick={() => setShowRateRulesModal(true)}
-                className="flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 bg-black/20 backdrop-blur-md text-yellow-100 border border-white/20 rounded-full font-bold shadow-sm"
+                className="flex items-center gap-1 text-[10px] px-2.5 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full font-bold text-yellow-100 hover:bg-white/20 transition-colors"
               >
-                <Gem size={13} className="text-yellow-300" />
-                当前周息 {(currentRate * 100).toFixed(0)}%
+                <Gem size={10} className="text-yellow-300" />
+                周息 {(currentRate * 100).toFixed(0)}%
               </motion.button>
 
               <motion.button 
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleCheckEarnings}
-                  className="flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white border border-red-400 rounded-full font-bold shadow-sm transition-colors backdrop-blur-md"
+                  className="flex items-center gap-1 text-[10px] px-2.5 py-1 bg-red-500/90 hover:bg-red-500 text-white border border-red-400/50 rounded-full font-bold shadow-sm transition-colors backdrop-blur-md"
               >
-                  <TrendingUp size={13} /> 下周收益预览
+                  <TrendingUp size={10} /> 收益预览
               </motion.button>
             </div>
           </div>
           
-          <motion.div 
-             className="text-5xl sm:text-6xl font-black text-white mb-8 relative z-10 drop-shadow-lg tracking-tight flex items-start justify-center"
-             animate={isWealthGrowing ? { scale: [1, 1.15, 1], textShadow: "0px 0px 20px rgba(255,215,0,0.8)" } : { scale: 1 }}
-             transition={{ type: "spring", stiffness: 300, damping: 10 }}
-          >
-             <span className="text-2xl align-top opacity-80 mr-1 mt-2">¥</span>
-             {state.totalAssets.toFixed(2)}
-          </motion.div>
+          {/* Main Number - Centered and Big */}
+          <div className="relative z-10 mb-8">
+              <motion.div 
+                className="text-6xl font-black text-white tracking-tighter flex items-baseline"
+                animate={isWealthGrowing ? { scale: [1, 1.05, 1], textShadow: "0px 0px 20px rgba(255,215,0,0.8)" } : { scale: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 10 }}
+              >
+                <span className="text-2xl font-bold opacity-60 mr-1">¥</span>
+                {state.totalAssets.toFixed(2)}
+              </motion.div>
+          </div>
           
-          <div className="grid grid-cols-2 gap-4 relative z-10">
-            <div className="bg-red-900/20 backdrop-blur-md p-4 rounded-xl border border-white/10">
-              <div className="text-white/70 text-xs mb-1 flex items-center gap-1 font-bold">
-                 <Wallet size={12} /> 零钱
+          {/* Clean Breakdown Grid */}
+          <div className="grid grid-cols-2 gap-3 relative z-10">
+            <div className="bg-black/10 backdrop-blur-sm rounded-2xl p-3 border border-white/5 flex flex-col justify-center">
+              <div className="text-white/60 text-[10px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                 <Wallet size={10} /> 零钱
               </div>
-              <div className="font-bold text-white text-lg tracking-wide">
+              <div className="text-lg font-bold text-white">
                 ¥{state.walletBalance.toFixed(2)}
               </div>
             </div>
@@ -951,12 +890,12 @@ export default function App() {
             <motion.div 
               whileTap={{ scale: 0.98 }}
               onClick={() => goalsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-              className="bg-orange-800/20 backdrop-blur-md p-4 rounded-xl border border-white/10 cursor-pointer hover:bg-orange-800/30 transition-colors"
+              className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 border border-white/10 flex flex-col justify-center cursor-pointer hover:bg-white/15 transition-colors"
             >
-              <div className="text-yellow-100 text-xs mb-1 flex items-center gap-1 font-bold">
-                 <Target size={12} /> 愿望储蓄
+              <div className="text-yellow-100/80 text-[10px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                 <Target size={10} /> 愿望储蓄
               </div>
-              <div className="font-bold text-white text-lg tracking-wide">
+              <div className="text-lg font-bold text-yellow-100">
                 ¥{state.savingsGoals.reduce((acc, curr) => acc + curr.currentAmount, 0).toFixed(2)}
               </div>
             </motion.div>
