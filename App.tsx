@@ -134,8 +134,6 @@ export default function App() {
   
   // PWA Install State
   const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [isIos, setIsIos] = useState(false);
-  const [showIosInstallModal, setShowIosInstallModal] = useState(false);
   
   // Earnings Preview Modal State
   const [showEarningsModal, setShowEarningsModal] = useState(false);
@@ -185,12 +183,8 @@ export default function App() {
     document.title = state.appName;
   }, [state]);
 
-  // Install Prompt Listener & iOS Detection
+  // Install Prompt Listener
   useEffect(() => {
-    // Detect iOS
-    const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIos(isIosDevice);
-
     // Detect Android/Chrome Install Prompt
     const handler = (e: any) => {
       e.preventDefault();
@@ -766,18 +760,8 @@ export default function App() {
                     <Download size={18} />
                 </motion.button>
             )}
-            {/* iOS Install Guide Button */}
-            {isIos && (
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowIosInstallModal(true)}
-                    className="bg-emerald-500 text-white p-2 rounded-lg relative border border-emerald-400 shadow-md"
-                    title="安装到 iPhone"
-                >
-                    <Download size={18} />
-                </motion.button>
-            )}
+            
+            {/* REMOVED iOS Install Guide Button */}
 
             <motion.button 
                 whileHover={{ scale: 1.05 }}
@@ -1147,66 +1131,7 @@ export default function App() {
 
       {/* --- Modals --- */}
       
-      {/* iOS Install Guide Modal */}
-      <AnimatePresence>
-        {showIosInstallModal && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            onClick={() => setShowIosInstallModal(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex flex-col justify-end items-center"
-          >
-            <motion.div 
-               initial={{ y: "100%" }}
-               animate={{ y: 0 }}
-               exit={{ y: "100%" }}
-               onClick={e => e.stopPropagation()}
-               className="bg-white w-full max-w-md rounded-t-3xl p-6 pb-12 shadow-2xl relative"
-            >
-               <button onClick={() => setShowIosInstallModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                  <X size={24} />
-               </button>
-               
-               <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-2 shadow-sm border border-gray-200">
-                      <Gem size={32} className="text-red-500" />
-                  </div>
-                  
-                  <h3 className="text-xl font-black text-gray-900">安装到 iPhone</h3>
-                  <p className="text-gray-500 text-sm px-6">由于 iOS 系统限制，请按照以下步骤手动添加到主屏幕：</p>
-                  
-                  <div className="w-full bg-gray-50 rounded-xl p-4 space-y-4 text-left border border-gray-100 mt-2">
-                      <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">1</div>
-                          <span className="text-sm font-medium text-gray-700">点击底部工具栏的 <Share size={16} className="inline mx-1 text-blue-500" /> 分享按钮</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                           <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">2</div>
-                           <span className="text-sm font-medium text-gray-700">向上滑动，找到并点击 <PlusSquare size={16} className="inline mx-1 text-gray-600" /> “添加到主屏幕”</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                           <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">3</div>
-                           <span className="text-sm font-medium text-gray-700">点击右上角的“添加”即可</span>
-                      </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => setShowIosInstallModal(false)}
-                    className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 mt-2"
-                  >
-                    知道了
-                  </button>
-               </div>
-               
-               {/* Pointing Arrow at bottom center (approx location of safari share button) */}
-               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-white animate-bounce">
-                  ⬇️
-               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* REMOVED iOS Install Guide Modal */}
 
       {/* Auto Settlement Alert */}
       <AnimatePresence>
