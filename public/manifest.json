@@ -1,0 +1,17 @@
+{
+  "short_name": "彦仔宝库",
+  "name": "彦仔宝库 SmartSaver",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#dc2626",
+  "background_color": "#fff7ed",
+  "orientation": "portrait"
+}
