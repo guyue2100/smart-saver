@@ -197,18 +197,40 @@ export default function App() {
   // Automatic Settlement Check (Runs on mount and state change)
   useEffect(() => {
     const checkAutoSettlement = () => {
-        const today = new Date();
-        const isSunday = today.getDay() === 0;
-        const todayStr = today.toDateString(); // e.g., "Sun Oct 01 2023"
+        const now = new Date();
+        // Today at 00:00:00
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        // Find the most recent Sunday (could be today)
+        const lastSunday = new Date(today);
+        lastSunday.setDate(today.getDate() - today.getDay());
+        const lastSundayStr = lastSunday.toDateString();
 
-        // Check if it is Sunday AND we haven't settled today yet
-        if (isSunday && state.lastSettlementDate !== todayStr) {
-            performAutoSettlement(todayStr);
+        // If we haven't settled for this Sunday yet
+        const lastSettlementDate = state.lastSettlementDate;
+        if (!lastSettlementDate) {
+            // First time initialization:
+            // If today is Sunday, settle now.
+            // If not Sunday, mark last Sunday as "settled" so we wait until next Sunday.
+            if (now.getDay() === 0) {
+                performAutoSettlement();
+            } else {
+                setState(prev => ({ ...prev, lastSettlementDate: lastSundayStr }));
+            }
+            return;
+        }
+
+        const lastSettlement = new Date(lastSettlementDate);
+        lastSettlement.setHours(0, 0, 0, 0);
+        
+        if (lastSettlement < lastSunday) {
+            // We missed one or more Sundays
+            performAutoSettlement();
         }
     };
     
     checkAutoSettlement();
-  }, [state.lastSettlementDate, state.totalAssets, state.consecutiveWeeksNoSpend, state.hasSpentThisWeek, state.weeklyAllowance, state.interestRateMode, state.fixedInterestRate, state.tieredInterestConfig]);
+  }, [state.lastSettlementDate, state.totalAssets, state.consecutiveWeeksNoSpend, state.hasSpentThisWeek, state.weeklyAllowance, state.interestRateMode, state.fixedInterestRate, state.tieredInterestConfig, state.weekCount]);
 
   // Check for wealth growth
   useEffect(() => {
@@ -354,12 +376,12 @@ export default function App() {
     }
   };
 
-  const getInterestRate = (total: number) => {
-    if (state.interestRateMode === 'FIXED') {
-      return state.fixedInterestRate;
+  const getInterestRate = (total: number, currentState: AppState) => {
+    if (currentState.interestRateMode === 'FIXED') {
+      return currentState.fixedInterestRate;
     }
     // Tiered Logic from State
-    const { lowThreshold, highThreshold, lowRate, midRate, highRate } = state.tieredInterestConfig;
+    const { lowThreshold, highThreshold, lowRate, midRate, highRate } = currentState.tieredInterestConfig;
     
     if (total > highThreshold) return highRate;
     if (total > lowThreshold) return midRate;
@@ -367,23 +389,23 @@ export default function App() {
   };
 
   // Logic used for both Preview and Actual Settlement
-  const calculateEarningsData = () => {
-    const prevTotal = state.totalAssets;
-    const rate = getInterestRate(prevTotal);
+  const calculateEarningsData = (currentState: AppState) => {
+    const prevTotal = currentState.totalAssets;
+    const rate = getInterestRate(prevTotal, currentState);
     const interest = prevTotal * rate;
-    const allowance = state.weeklyAllowance;
+    const allowance = currentState.weeklyAllowance;
     
     let bonus = 0;
-    let newStreak = state.consecutiveWeeksNoSpend;
+    let newStreak = currentState.consecutiveWeeksNoSpend;
 
-    if (!state.hasSpentThisWeek) {
+    if (!currentState.hasSpentThisWeek) {
       newStreak += 1;
     } else {
       newStreak = 0;
     }
 
     // Check bonus condition (every 3 weeks)
-    if (newStreak >= 3 && newStreak % 3 === 0 && !state.hasSpentThisWeek) {
+    if (newStreak >= 3 && newStreak % 3 === 0 && !currentState.hasSpentThisWeek) {
       bonus = 10;
     }
 
@@ -401,58 +423,83 @@ export default function App() {
   };
 
   const handleCheckEarnings = () => {
-    const data = calculateEarningsData();
+    const data = calculateEarningsData(state);
     setPendingEarnings(data);
     setShowEarningsModal(true);
   };
 
-  const performAutoSettlement = (settlementDateStr: string) => {
-    const { allowance, interest, bonus, total, newTotal, newStreak, prevTotal } = calculateEarningsData();
-    
-    const newTransactions: Transaction[] = [
-      {
-        id: generateId(),
-        type: 'INCOME',
-        amount: allowance,
-        description: `自动结算: 第 ${state.weekCount + 1} 周零花钱`,
-        date: new Date().toISOString(),
-        balanceSnapshot: prevTotal + allowance
-      },
-      {
-        id: generateId(),
-        type: 'INTEREST',
-        amount: interest,
-        description: `自动结算: 周利息 (利率 ${(getInterestRate(prevTotal) * 100).toFixed(0)}%)`,
-        date: new Date().toISOString(),
-        balanceSnapshot: prevTotal + allowance + interest
-      }
-    ];
+  const performAutoSettlement = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const lastSunday = new Date(today);
+    lastSunday.setDate(today.getDate() - today.getDay());
 
-    if (bonus > 0) {
-      newTransactions.push({
-        id: generateId(),
-        type: 'BONUS',
-        amount: bonus,
-        description: '自动结算: 自律奖励 (连续3周)',
-        date: new Date().toISOString(),
-        balanceSnapshot: newTotal
-      });
+    let currentState = { ...state };
+    let lastSettlementDateStr = state.lastSettlementDate;
+    
+    if (!lastSettlementDateStr) return;
+
+    let lastSettlement = new Date(lastSettlementDateStr);
+    lastSettlement.setHours(0, 0, 0, 0);
+    
+    let weeksSettled = 0;
+    
+    while (lastSettlement < lastSunday) {
+        // Move to next Sunday
+        lastSettlement.setDate(lastSettlement.getDate() + 7);
+        const currentSundayStr = lastSettlement.toDateString();
+        
+        const { allowance, interest, bonus, total, newTotal, newStreak, prevTotal } = calculateEarningsData(currentState);
+        
+        const weekTransactions: Transaction[] = [
+          {
+            id: generateId(),
+            type: 'INCOME',
+            amount: allowance,
+            description: `自动结算: 第 ${currentState.weekCount + 1} 周零花钱`,
+            date: lastSettlement.toISOString(),
+            balanceSnapshot: prevTotal + allowance
+          },
+          {
+            id: generateId(),
+            type: 'INTEREST',
+            amount: interest,
+            description: `自动结算: 周利息 (利率 ${(getInterestRate(prevTotal, currentState) * 100).toFixed(0)}%)`,
+            date: lastSettlement.toISOString(),
+            balanceSnapshot: prevTotal + allowance + interest
+          }
+        ];
+
+        if (bonus > 0) {
+          weekTransactions.push({
+            id: generateId(),
+            type: 'BONUS',
+            amount: bonus,
+            description: '自动结算: 自律奖励 (连续3周)',
+            date: lastSettlement.toISOString(),
+            balanceSnapshot: newTotal
+          });
+        }
+
+        currentState = {
+          ...currentState,
+          walletBalance: currentState.walletBalance + total,
+          totalAssets: newTotal,
+          weekCount: currentState.weekCount + 1,
+          consecutiveWeeksNoSpend: bonus > 0 ? 0 : newStreak,
+          hasSpentThisWeek: false, // Assume no spend if app wasn't opened
+          transactions: [...weekTransactions, ...currentState.transactions],
+          lastSettlementDate: currentSundayStr
+        };
+        weeksSettled++;
     }
 
-    setState(prev => ({
-      ...prev,
-      walletBalance: prev.walletBalance + total,
-      totalAssets: newTotal,
-      weekCount: prev.weekCount + 1,
-      consecutiveWeeksNoSpend: bonus > 0 ? 0 : newStreak, 
-      hasSpentThisWeek: false,
-      transactions: [...newTransactions, ...prev.transactions],
-      lastSettlementDate: settlementDateStr
-    }));
-
-    setShowAutoSettleAlert(true);
-    triggerGoldRain();
-    if (bonus > 0) triggerConfetti();
+    if (weeksSettled > 0) {
+        setState(currentState);
+        setShowAutoSettleAlert(true);
+        triggerGoldRain();
+        triggerConfetti();
+    }
   };
 
   const handleIncome = (amount: number, reason: string) => {
@@ -698,7 +745,7 @@ export default function App() {
 
   // --- Render Helpers ---
 
-  const currentRate = getInterestRate(state.totalAssets);
+  const currentRate = getInterestRate(state.totalAssets, state);
   const isStreakClose = state.consecutiveWeeksNoSpend === 2;
   const getFilteredTransactions = useCallback(() => {
     let result = [...state.transactions];
@@ -1325,12 +1372,6 @@ export default function App() {
             >
                {/* Header Background */}
                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-28 absolute top-0 left-0 w-full"></div>
-               <div className="absolute top-0 right-0 p-4">
-                  <button onClick={() => { setShowEarningsModal(false); setPendingEarnings(null); }} className="bg-white/20 hover:bg-white/30 text-white rounded-full p-1.5 transition-colors">
-                      <X size={20} />
-                  </button>
-               </div>
-
                <div className="relative z-10 pt-6 px-6 pb-6 text-center">
                   <motion.div 
                       initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.1 }}
@@ -1349,7 +1390,7 @@ export default function App() {
                       </div>
                       <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 利息收益 <span className="text-[10px] text-gray-400">({(getInterestRate(pendingEarnings.prevTotal) * 100).toFixed(0)}%)</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 利息收益 <span className="text-[10px] text-gray-400">({(getInterestRate(pendingEarnings.prevTotal, state) * 100).toFixed(0)}%)</span>
                           </span>
                           <span className="font-bold text-blue-600">+¥{pendingEarnings.interest.toFixed(2)}</span>
                       </div>
